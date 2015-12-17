@@ -27,7 +27,6 @@ namespace DirtyHtmlTools
             Tag root = new Tag() { Name = "<ROOT>" };
             Element current = root;
 
-            string AttrName = string.Empty;
             Stack<Element> stack = new Stack<Element>();
             stack.Push(current);
             ParserState state = ParserState.Content;
@@ -96,8 +95,6 @@ namespace DirtyHtmlTools
 
         private bool readInsideTag(Token[] tokens, ref int i, Tag current)
         {
-            string tagName = String.Empty;
-
             while (true)
             {
                 if (tokens[i].Type == TokenType.TagClose)
