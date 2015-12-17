@@ -14,7 +14,7 @@ namespace DirtyHtmlTools
             var tokens = new List<Token>();
 
             int i = 0;
-            var state = State.Identify;
+            var state = LexerState.Identify;
 
             while (i < chars.Length)
             {
@@ -24,130 +24,148 @@ namespace DirtyHtmlTools
 
                     switch (state)
                     {
-                        case State.Identify:
+                        case LexerState.Identify:
                             if (chars[i] == '<')
                             {
                                 if (chars[i + 1] == '!')
                                 {
-                                    state = State.Comment;
+                                    state = LexerState.Comment;
                                     break;
                                 }
 
                                 if (chars[i + 1] == '/')
                                 {
-                                    state = State.TagEnd;
+                                    state = LexerState.TagEnd;
                                     break;
                                 }
 
                                 if (char.IsLetter(chars[i + 1]))
                                 {
-                                    state = State.TagStart;
+                                    state = LexerState.TagStart;
                                     break;
                                 }
 
-                                state = State.Unknown;
+                                state = LexerState.Unknown;
                                 break;
                             }
 
-                            state = State.Content;
+                            state = LexerState.Content;
                             break;
 
-                        case State.IdentifyInsideTag:
-                            skipWhitespace(chars, ref i);
-
-                            if (char.IsLetterOrDigit(chars[i]))
+                        case LexerState.IdentifyInsideTag:
                             {
-                                tokens.Add(new Token() { Type = TokenType.AttributeName, Value = readName(chars, ref i) });
-                                state = State.IdentifyInsideTag;
+                                skipWhitespace(chars, ref i);
+                                int start = i;
+
+                                if (char.IsLetterOrDigit(chars[i]))
+                                {
+                                    tokens.Add(new Token(TokenType.AttributeName, readName(chars, ref i), start));
+                                    state = LexerState.IdentifyInsideTag;
+                                    break;
+                                }
+
+                                if (chars[i] == '=')
+                                {
+                                    i++; // =
+                                    tokens.Add(new Token(TokenType.AttributeEqual, "=", start));
+                                    state = LexerState.IdentifyInsideTag;
+                                    break;
+                                }
+
+                                if (chars[i] == '\'')
+                                {
+                                    ++i; // '
+                                    tokens.Add(new Token(TokenType.AttributeValue, readUntil(chars, ref i, '\''), start));
+                                    ++i; // '
+                                    state = LexerState.IdentifyInsideTag;
+                                    break;
+                                }
+
+                                if (chars[i] == '"')
+                                {
+                                    ++i; // "
+                                    tokens.Add(new Token(TokenType.AttributeValue, readUntil(chars, ref i, '"'), start));
+                                    ++i; // "
+                                    state = LexerState.IdentifyInsideTag;
+                                    break;
+                                }
+
+                                if (chars[i] == '/' && chars[i + 1] == '>')
+                                {
+                                    i += 2; // />
+                                    tokens.Add(new Token(TokenType.ShortTagClose, "", start));
+                                    state = LexerState.Identify;
+                                    break;
+                                }
+
+                                if (chars[i] == '>')
+                                {
+                                    ++i; // >
+                                    tokens.Add(new Token(TokenType.TagClose, String.Empty, start));
+                                    state = LexerState.Identify;
+                                    break;
+                                }
+
+                                tokens.Add(new Token(TokenType.InvalidInsideTag, chars[i].ToString(), start));
+                                i++; // <unknown>
+                                state = LexerState.IdentifyInsideTag;
                                 break;
                             }
-
-                            if (chars[i] == '=')
+                        case LexerState.TagEnd:
                             {
-                                i++; // =
-                                tokens.Add(new Token() { Type = TokenType.AttributeEqual, Value = "=" });
-                                state = State.IdentifyInsideTag;
+                                int start = i;
+                                i += 2; // </
+
+                                tokens.Add(new Token(TokenType.TagEnd, readName(chars, ref i), start));
+                                skipWhitespace(chars, ref i);
+                                i++; // >;
+
+                                state = LexerState.Identify;
                                 break;
                             }
-
-                            if (chars[i] == '\'')
+                        case LexerState.Comment:
                             {
-                                ++i; // '
-                                tokens.Add(new Token() { Type = TokenType.AttributeValue, Value = readUntil(chars, ref i, '\'') });
-                                ++i; // '
-                                state = State.IdentifyInsideTag;
+                                int start = i;
+                                i += 4; // <!--
+                                tokens.Add(new Token(TokenType.Comment, readUntilSeq(chars, ref i, "-->".ToCharArray()), start));
+                                i += 3; // -->
+
+                                state = LexerState.Identify;
                                 break;
                             }
-
-                            if (chars[i] == '"')
+                        case LexerState.TagStart:
                             {
-                                ++i; // "
-                                tokens.Add(new Token() { Type = TokenType.AttributeValue, Value = readUntil(chars, ref i, '"') });
-                                ++i; // "
-                                state = State.IdentifyInsideTag;
+                                int start = i;
+                                i++; // <
+                                string tagName = readName(chars, ref i);
+                                tokens.Add(new Token(TokenType.TagStart, tagName, start));
+
+                                state = LexerState.IdentifyInsideTag;
                                 break;
                             }
 
-                            if (chars[i] == '/' && chars[i + 1] == '>')
+                        case LexerState.Content:
                             {
-                                i += 2; // />
-                                tokens.Add(new Token() { Type = TokenType.ShortTagClose, Value = "" });
-                                state = State.Identify;
+                                int start = i;
+                                tokens.Add(new Token(TokenType.Content, readContent(chars, ref i), start));
+                                state = LexerState.Identify;
                                 break;
                             }
 
-                            if (chars[i] == '>')
+                        case LexerState.Unknown:
                             {
-                                ++i; // >
-                                tokens.Add(new Token() { Type = TokenType.TagClose, Value = "" });
-                                state = State.Identify;
+                                int start = i;
+                                tokens.Add(new Token(TokenType.Incomplete, readToEnd(chars, ref i), start));
+                                state = LexerState.Identify;
                                 break;
                             }
-
-                            tokens.Add(new Token() { Type = TokenType.InvalidInsideTag, Value = chars[i].ToString() });
-                            i++; // <unknown>
-                            state = State.IdentifyInsideTag;
-                            break;
-                        case State.TagEnd:
-                            i += 2; // </
-
-                            tokens.Add(new Token() { Type = TokenType.TagEnd, Value = readName(chars, ref i) });
-                            skipWhitespace(chars, ref i);
-                            i++; // >;
-
-                            state = State.Identify;
-                            break;
-                        case State.Comment:
-                            i += 4; // <!--
-                            tokens.Add(new Token() { Type = TokenType.Comment, Value = readUntilSeq(chars, ref i, "-->".ToCharArray()) });
-                            i += 3; // -->
-
-                            state = State.Identify;
-                            break;
-                        case State.TagStart:
-                            i++; // <
-                            string tagName = readName(chars, ref i);
-                            tokens.Add(new Token() { Type = TokenType.TagStart, Value = tagName });
-
-                            state = State.IdentifyInsideTag;
-                            break;
-
-                        case State.Content:
-                            tokens.Add(new Token() { Type = TokenType.Content, Value = readContent(chars, ref i) });
-                            state = State.Identify;
-                            break;
-
-                        case State.Unknown:
-                            tokens.Add(new Token() { Type = TokenType.Incomplete, Value = readToEnd(chars, ref i) });
-                            state = State.Identify;
-                            break;
                     }
 
                 }
                 catch (IndexOutOfRangeException)
                 {
                     i = lastValid;
-                    tokens.Add(new Token() { Type = TokenType.Incomplete, Value = readToEnd(chars, ref i) });
+                    tokens.Add(new Token(TokenType.Incomplete, readToEnd(chars, ref i), i));
                     break;
                 }
             }
@@ -174,7 +192,6 @@ namespace DirtyHtmlTools
 
             while (true)
             {
-                int start = i;
                 bool match = true;
 
                 foreach (char c in stop)
@@ -222,7 +239,8 @@ namespace DirtyHtmlTools
 
             while (true)
             {
-                if (chars[i] == '<') break;
+                if (chars[i] == '<')
+                    break;
                 else if (chars[i] == '&')
                 {
                     string entity;
@@ -239,17 +257,6 @@ namespace DirtyHtmlTools
             }
 
             return buffer.ToString();
-        }
-
-        private Token readAttribute(char[] chars, ref int i)
-        {
-            string name = readName(chars, ref i);
-            skipWhitespace(chars, ref i);
-            if (chars[i] == '=')
-            {
-
-            }
-            return default(Token);
         }
 
         private void skipWhitespace(char[] chars, ref int i)
@@ -278,7 +285,8 @@ namespace DirtyHtmlTools
             {
                 buffer.Append(chars[i]);
 
-                if (chars[i] == ';') break;
+                if (chars[i] == ';')
+                    break;
                 i++;
             }
 
@@ -302,7 +310,7 @@ namespace DirtyHtmlTools
         InvalidInsideTag,
     }
 
-    public enum State
+    public enum LexerState
     {
         Identify,
         Comment,
@@ -315,9 +323,18 @@ namespace DirtyHtmlTools
 
     public struct Token
     {
-        public TokenType Type;
-        public string Value;
-        public int position;
+        public TokenType Type { get; private set; }
+
+        public string Value { get; private set; }
+
+        public int Position { get; private set; }
+
+        public Token(TokenType type, string value, int position)
+        {
+            Type = type;
+            Value = value;
+            Position = position;
+        }
 
         public override string ToString()
         {
