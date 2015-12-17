@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace DirtyHtmlTools
 {
@@ -75,7 +76,8 @@ namespace DirtyHtmlTools
                                 if (chars[i] == '\'')
                                 {
                                     ++i; // '
-                                    tokens.Add(new Token(TokenType.AttributeValue, readUntil(chars, ref i, '\''), start));
+                                    string tmp = HttpUtility.HtmlDecode(readUntil(chars, ref i, '\''));
+                                    tokens.Add(new Token(TokenType.AttributeValue, tmp, start));
                                     ++i; // '
                                     state = LexerState.IdentifyInsideTag;
                                     break;
@@ -84,7 +86,8 @@ namespace DirtyHtmlTools
                                 if (chars[i] == '"')
                                 {
                                     ++i; // "
-                                    tokens.Add(new Token(TokenType.AttributeValue, readUntil(chars, ref i, '"'), start));
+                                    string tmp = HttpUtility.HtmlDecode(readUntil(chars, ref i, '"'));
+                                    tokens.Add(new Token(TokenType.AttributeValue, tmp, start));
                                     ++i; // "
                                     state = LexerState.IdentifyInsideTag;
                                     break;
@@ -269,7 +272,12 @@ namespace DirtyHtmlTools
         {
             StringBuilder buffer = new StringBuilder();
 
-            while (char.IsLetterOrDigit(chars[i]))
+            while (
+                char.IsLetterOrDigit(chars[i]) ||
+                chars[i] == ':' ||
+                chars[i] == '-' ||
+                chars[i] == '_' ||
+                chars[i] == '.')
             {
                 buffer.Append(chars[i]);
                 i++;
@@ -290,7 +298,8 @@ namespace DirtyHtmlTools
                 i++;
             }
 
-            ret = buffer.ToString();
+
+            ret = HttpUtility.HtmlDecode(buffer.ToString());
             return true;
         }
     }
