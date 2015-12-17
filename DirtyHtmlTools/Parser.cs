@@ -24,7 +24,7 @@ namespace DirtyHtmlTools
 
         public Element[] Parse(Token[] tokens)
         {
-            Tag root = new Tag() { Name = "<DONA RUTE>" };
+            Tag root = new Tag() { Name = "<ROOT>" };
             Element current = root;
 
             string AttrName = string.Empty;
@@ -52,7 +52,7 @@ namespace DirtyHtmlTools
                                 state = ParserState.Tag;
                                 break;
                             case TokenType.TagEnd:
-                                if(stack.Peek() == root)
+                                if (stack.Peek() == root)
                                     throw new ParseException("wrong close tag");
 
                                 Element finished = stack.Pop();
@@ -141,8 +141,12 @@ namespace DirtyHtmlTools
 
     public class ParseException : Exception
     {
-        public ParseException(string message) : base(message) { }
+        public ParseException(string message)
+            : base(message)
+        {
+        }
     }
+
     public class Element
     {
         public ElementType Type { get; protected set; }
@@ -162,6 +166,7 @@ namespace DirtyHtmlTools
             return String.Format("C: {0}", Value);
         }
     }
+
     public class Tag : Element
     {
         public string Name;
@@ -178,6 +183,7 @@ namespace DirtyHtmlTools
             return String.Format("T: {0}", Name);
         }
     }
+
     public enum ElementType
     {
         Tag,
