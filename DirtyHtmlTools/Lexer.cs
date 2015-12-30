@@ -55,12 +55,12 @@ namespace DirtyHtmlTools
 
                         case LexerState.IdentifyInsideTag:
                             {
-                                skipWhitespace(chars, ref i);
+                                SkipWhitespace(chars, ref i);
                                 int start = i;
 
                                 if (char.IsLetterOrDigit(chars[i]))
                                 {
-                                    tokens.Add(new Token(TokenType.AttributeName, readName(chars, ref i), start));
+                                    tokens.Add(new Token(TokenType.AttributeName, ReadName(chars, ref i), start));
                                     state = LexerState.IdentifyInsideTag;
                                     break;
                                 }
@@ -76,7 +76,7 @@ namespace DirtyHtmlTools
                                 if (chars[i] == '\'')
                                 {
                                     ++i; // '
-                                    string tmp = HttpUtility.HtmlDecode(readUntil(chars, ref i, '\''));
+                                    string tmp = HttpUtility.HtmlDecode(ReadUntil(chars, ref i, '\''));
                                     tokens.Add(new Token(TokenType.AttributeValue, tmp, start));
                                     ++i; // '
                                     state = LexerState.IdentifyInsideTag;
@@ -86,7 +86,7 @@ namespace DirtyHtmlTools
                                 if (chars[i] == '"')
                                 {
                                     ++i; // "
-                                    string tmp = HttpUtility.HtmlDecode(readUntil(chars, ref i, '"'));
+                                    string tmp = HttpUtility.HtmlDecode(ReadUntil(chars, ref i, '"'));
                                     tokens.Add(new Token(TokenType.AttributeValue, tmp, start));
                                     ++i; // "
                                     state = LexerState.IdentifyInsideTag;
@@ -119,8 +119,8 @@ namespace DirtyHtmlTools
                                 int start = i;
                                 i += 2; // </
 
-                                tokens.Add(new Token(TokenType.TagEnd, readName(chars, ref i), start));
-                                skipWhitespace(chars, ref i);
+                                tokens.Add(new Token(TokenType.TagEnd, ReadName(chars, ref i), start));
+                                SkipWhitespace(chars, ref i);
                                 i++; // >;
 
                                 state = LexerState.Identify;
@@ -130,7 +130,7 @@ namespace DirtyHtmlTools
                             {
                                 int start = i;
                                 i += 4; // <!--
-                                tokens.Add(new Token(TokenType.Comment, readUntilSeq(chars, ref i, "-->".ToCharArray()), start));
+                                tokens.Add(new Token(TokenType.Comment, ReadUntilSeq(chars, ref i, "-->".ToCharArray()), start));
                                 i += 3; // -->
 
                                 state = LexerState.Identify;
@@ -140,7 +140,7 @@ namespace DirtyHtmlTools
                             {
                                 int start = i;
                                 i++; // <
-                                string tagName = readName(chars, ref i);
+                                string tagName = ReadName(chars, ref i);
                                 tokens.Add(new Token(TokenType.TagStart, tagName, start));
 
                                 state = LexerState.IdentifyInsideTag;
@@ -150,7 +150,7 @@ namespace DirtyHtmlTools
                         case LexerState.Content:
                             {
                                 int start = i;
-                                tokens.Add(new Token(TokenType.Content, readContent(chars, ref i), start));
+                                tokens.Add(new Token(TokenType.Content, ReadContent(chars, ref i), start));
                                 state = LexerState.Identify;
                                 break;
                             }
@@ -158,7 +158,7 @@ namespace DirtyHtmlTools
                         case LexerState.Unknown:
                             {
                                 int start = i;
-                                tokens.Add(new Token(TokenType.Incomplete, readToEnd(chars, ref i), start));
+                                tokens.Add(new Token(TokenType.Incomplete, ReadToEnd(chars, ref i), start));
                                 state = LexerState.Identify;
                                 break;
                             }
@@ -168,7 +168,7 @@ namespace DirtyHtmlTools
                 catch (IndexOutOfRangeException)
                 {
                     i = lastValid;
-                    tokens.Add(new Token(TokenType.Incomplete, readToEnd(chars, ref i), i));
+                    tokens.Add(new Token(TokenType.Incomplete, ReadToEnd(chars, ref i), i));
                     break;
                 }
             }
@@ -176,7 +176,7 @@ namespace DirtyHtmlTools
             return tokens.ToArray();
         }
 
-        private string readToEnd(char[] chars, ref int i)
+        private string ReadToEnd(char[] chars, ref int i)
         {
             StringBuilder buffer = new StringBuilder();
 
@@ -189,7 +189,7 @@ namespace DirtyHtmlTools
             return buffer.ToString();
         }
 
-        private string readUntilSeq(char[] chars, ref int i, char[] stop)
+        private string ReadUntilSeq(char[] chars, ref int i, char[] stop)
         {
             StringBuilder buffer = new StringBuilder();
 
@@ -223,7 +223,7 @@ namespace DirtyHtmlTools
             return buffer.ToString();
         }
 
-        private string readUntil(char[] chars, ref int i, char stop)
+        private string ReadUntil(char[] chars, ref int i, char stop)
         {
             StringBuilder buffer = new StringBuilder();
 
@@ -236,7 +236,7 @@ namespace DirtyHtmlTools
             return buffer.ToString();
         }
 
-        private string readContent(char[] chars, ref int i)
+        private string ReadContent(char[] chars, ref int i)
         {
             StringBuilder buffer = new StringBuilder();
 
@@ -247,7 +247,7 @@ namespace DirtyHtmlTools
                 else if (chars[i] == '&')
                 {
                     string entity;
-                    if (tryReadEntity(chars, ref i, out entity))
+                    if (TryReadEntity(chars, ref i, out entity))
                     {
                         buffer.Append(entity);
                     }
@@ -262,13 +262,13 @@ namespace DirtyHtmlTools
             return buffer.ToString();
         }
 
-        private void skipWhitespace(char[] chars, ref int i)
+        private void SkipWhitespace(char[] chars, ref int i)
         {
             while (char.IsWhiteSpace(chars[i]))
                 i++;
         }
 
-        private string readName(char[] chars, ref int i)
+        private string ReadName(char[] chars, ref int i)
         {
             StringBuilder buffer = new StringBuilder();
 
@@ -285,7 +285,7 @@ namespace DirtyHtmlTools
             return buffer.ToString();
         }
 
-        private bool tryReadEntity(char[] chars, ref int i, out string ret)
+        private bool TryReadEntity(char[] chars, ref int i, out string ret)
         {
             StringBuilder buffer = new StringBuilder();
 
@@ -297,7 +297,6 @@ namespace DirtyHtmlTools
                     break;
                 i++;
             }
-
 
             ret = HttpUtility.HtmlDecode(buffer.ToString());
             return true;

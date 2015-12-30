@@ -16,8 +16,8 @@ namespace DirtyHtmlToolsNunit
             P = new Parser();
         }
 
-        private Token[] throwOnError(Token[] tokens)
-        { 
+        private Token[] ThrowOnError(Token[] tokens)
+        {
             foreach (var item in tokens)
             {
                 switch (item.Type)
@@ -26,22 +26,22 @@ namespace DirtyHtmlToolsNunit
                         throw new Exception(String.Format("tag inválida em {0}", item.Position));
                     case TokenType.InvalidInsideTag:
                         throw new Exception(String.Format("Atributo inválido em {0}", item.Position));
-                } 
+                }
             }
 
             return tokens;
         }
 
         [Test]
-        public void testLexer()
+        public void TestLexer()
         {
             string test = "<z               >aSDasdAS<b>Z\\ZZZZZ&amp;</b>asdfasdfs\naf</z><a href=\"asdfas\ndfasdf\" asdfa=\"1\" /><plau z='\"minha irmã '>sdfasdfasdfa </plau><!--asdf-->ffffffffffffffffff&teucu;wertyu\"''   <!--oirytiu <zxcvbnm> o <> eryoti-->";
-            Token[] tmp = throwOnError(L.Parse(test));
+            Token[] tmp = ThrowOnError(L.Parse(test));
             tmp.ToString();
         }
 
         [Test]
-        public void testParser()
+        public void TestParser()
         {
             Element[] tmp;
             tmp = P.Parse("<a:b:c/><d_e f.g-h=\"&amp;\"/>");
@@ -54,4 +54,3 @@ namespace DirtyHtmlToolsNunit
 
     }
 }
-

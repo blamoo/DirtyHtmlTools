@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace DirtyHtmlTools
 {
@@ -24,7 +25,7 @@ namespace DirtyHtmlTools
 
         public Element[] Parse(Token[] tokens)
         {
-            Tag root = new Tag() { Name = "<ROOT>" };
+            Tag root = new Tag() { Name = "ROOT" };
             Element current = root;
 
             Stack<Element> stack = new Stack<Element>();
@@ -69,7 +70,7 @@ namespace DirtyHtmlTools
                         }
                         break;
                     case ParserState.Tag:
-                        bool isShortTag = readInsideTag(tokens, ref i, ((Tag)current));
+                        bool isShortTag = ReadInsideTag(tokens, ref i, ((Tag)current));
 
                         if (isShortTag)
                         {
@@ -93,7 +94,7 @@ namespace DirtyHtmlTools
             return ((Tag)current).Children.ToArray();
         }
 
-        private bool readInsideTag(Token[] tokens, ref int i, Tag current)
+        private bool ReadInsideTag(Token[] tokens, ref int i, Tag current)
         {
             while (true)
             {
@@ -144,8 +145,20 @@ namespace DirtyHtmlTools
         }
     }
 
-    public class Element
+    public abstract class Element
     {
+        public abstract string ToHtml();
+
+        public static string ToHtml(Element[] elements)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var item in elements)
+            {
+                sb.Append(item.ToHtml());
+            }
+            return sb.ToString();
+        }
+
         public ElementType Type { get; protected set; }
     }
 
@@ -156,6 +169,11 @@ namespace DirtyHtmlTools
         public Content()
         {
             Type = ElementType.Content;
+        }
+
+        public override string ToHtml()
+        {
+            return HttpUtility.HtmlEncode(Value);
         }
 
         public override string ToString()
@@ -173,6 +191,46 @@ namespace DirtyHtmlTools
         public Tag()
         {
             Type = ElementType.Tag;
+        }
+
+        public override string ToHtml()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append('<');
+            sb.Append(Name);
+
+            foreach (var item in Attributes)
+            {
+                sb.Append(' ');
+                sb.Append(item.Key);
+                if (!string.IsNullOrEmpty(item.Value))
+                {
+                    sb.Append('=');
+                    sb.Append('"');
+                    sb.Append(HttpUtility.HtmlEncode(item.Value));
+                    sb.Append('"');
+                }
+            }
+
+            if (Children.Count == 0)
+            {
+                sb.Append("/>");
+            }
+            else
+            {
+                sb.Append('>');
+
+                foreach (var item in Children)
+                {
+                    sb.Append(item.ToHtml());
+                }
+
+                sb.Append("</");
+                sb.Append(Name);
+                sb.Append('>');
+            }
+
+            return sb.ToString();
         }
 
         public override string ToString()
